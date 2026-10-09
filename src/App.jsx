@@ -210,6 +210,8 @@ export default function App() {
       
       {/* Header */}
       <Header
+        currentView={currentView}
+        onSwitchView={setCurrentView}
         voiceEnabled={voiceEnabled}
         setVoiceEnabled={setVoiceEnabled}
         beepEnabled={beepEnabled}
@@ -217,7 +219,6 @@ export default function App() {
         onOpenUpload={() => setIsUploadOpen(true)}
         onOpenManual={() => setIsManualOpen(true)}
         onOpenGuide={() => setIsGuideOpen(true)}
-        onOpenFullscreen={() => setCurrentView('FULLSCREEN_AR')}
       />
 
       {/* Main Content */}

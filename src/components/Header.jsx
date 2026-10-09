@@ -1,7 +1,9 @@
 import React from 'react';
-import { Camera, Volume2, VolumeX, Mic, MicOff, Upload, HelpCircle, Sparkles, QrCode } from 'lucide-react';
+import { Camera, Volume2, VolumeX, Mic, MicOff, Upload, HelpCircle, Sparkles, QrCode, FileSpreadsheet } from 'lucide-react';
 
 export default function Header({
+  currentView,
+  onSwitchView,
   voiceEnabled,
   setVoiceEnabled,
   beepEnabled,
@@ -43,17 +45,43 @@ export default function Header({
           </div>
         </div>
 
+        {/* Center: View Switcher Tabs (Desktop & Tablet) */}
+        <div className="hidden sm:flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800">
+          <button
+            onClick={() => onSwitchView('FULLSCREEN_AR')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer ${
+              currentView === 'FULLSCREEN_AR'
+                ? 'bg-gradient-to-r from-sky-500 to-indigo-600 text-white shadow-md shadow-sky-500/20'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Camera className="w-3.5 h-3.5 text-sky-300" />
+            <span>โหมดสแกนเต็มจอ (AR)</span>
+          </button>
+
+          <button
+            onClick={() => onSwitchView('DASHBOARD')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer ${
+              currentView === 'DASHBOARD'
+                ? 'bg-gradient-to-r from-sky-500 to-indigo-600 text-white shadow-md shadow-sky-500/20'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5 text-indigo-300" />
+            <span>โหมดตาราง & สรุปผล</span>
+          </button>
+        </div>
+
         {/* Action Controls */}
         <div className="flex items-center space-x-1 sm:space-x-2">
           
-          {/* Fullscreen AR Mode Button */}
+          {/* Mobile Quick Switch Button */}
           <button
-            onClick={onOpenFullscreen}
-            className="px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold bg-gradient-to-r from-sky-500 via-indigo-600 to-cyan-500 hover:from-sky-400 hover:to-indigo-500 text-white shadow-md shadow-indigo-500/30 active:scale-95 transition flex items-center gap-1.5 cursor-pointer"
-            title="เปิดโหมดสแกนเต็มจอ AR"
+            onClick={() => onSwitchView(currentView === 'FULLSCREEN_AR' ? 'DASHBOARD' : 'FULLSCREEN_AR')}
+            className="sm:hidden px-2.5 py-1.5 rounded-lg text-xs font-bold bg-gradient-to-r from-sky-500 to-indigo-600 text-white flex items-center gap-1 shadow-md cursor-pointer"
           >
-            <Camera className="w-3.5 h-3.5 animate-pulse" />
-            <span>เต็มจอ AR</span>
+            {currentView === 'FULLSCREEN_AR' ? <FileSpreadsheet className="w-3.5 h-3.5" /> : <Camera className="w-3.5 h-3.5" />}
+            <span>{currentView === 'FULLSCREEN_AR' ? 'ดูตาราง' : 'เต็มจอ AR'}</span>
           </button>
 
           {/* Voice Speech Toggle */}
