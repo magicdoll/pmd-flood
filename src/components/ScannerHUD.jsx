@@ -116,12 +116,14 @@ export default function ScannerHUD({
 
     } catch (err) {
       console.error('Camera access error:', err);
-      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+      if (err.name === 'NotReadableError' || err.message?.includes('in use')) {
+        setCameraError('กล้องกำลังถูกใช้งานโดยโปรแกรมอื่น (Device in use): กรุณาปิดแอป Camera, MS Teams, Zoom หรือแท็บอื่นที่เปิดกล้องอยู่ แล้วกดเปิดกล้องใหม่อีกครั้ง');
+      } else if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
         setCameraError('กรุณากดอนุญาตการใช้กล้อง (Allow Camera) ในเบราว์เซอร์');
       } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
         setCameraError('ไม่พบอุปกรณ์กล้องบนเครื่องนี้');
       } else {
-        setCameraError(`ไม่สามารถเปิดกล้องได้: ${err.message || 'โปรดกดใหม่อีกครั้ง'}`);
+        setCameraError(`ไม่สามารถเปิดกล้องได้ (${err.name || 'Error'}): ${err.message || 'โปรดกดใหม่อีกครั้ง'}`);
       }
       setCameraActive(false);
     }

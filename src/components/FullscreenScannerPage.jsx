@@ -86,7 +86,15 @@ export default function FullscreenScannerPage({
 
     } catch (err) {
       console.error('AR Camera error:', err);
-      setCameraError(err.message || 'ไม่สามารถเปิดกล้องได้');
+      if (err.name === 'NotReadableError' || err.message?.includes('in use')) {
+        setCameraError('กล้องกำลังถูกใช้งานโดยโปรแกรมอื่น: กรุณาปิดแอป Camera ของ Windows, MS Teams, Zoom หรือแท็บเบราว์เซอร์อื่นที่เปิดกล้องอยู่ แล้วกดเปิดกล้องใหม่อีกครั้ง');
+      } else if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        setCameraError('กรุณากดอนุญาตการใช้กล้อง (Allow Camera) ในเบราว์เซอร์');
+      } else if (err.name === 'NotFoundError') {
+        setCameraError('ไม่พบอุปกรณ์กล้องบนเครื่องนี้');
+      } else {
+        setCameraError(`ไม่สามารถเปิดกล้องได้ (${err.name || 'Error'}): ${err.message || 'โปรดกดใหม่อีกครั้ง'}`);
+      }
       setCameraActive(false);
     }
   }, []);
