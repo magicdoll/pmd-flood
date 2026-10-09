@@ -20,12 +20,15 @@ export default function App() {
   // Mobile active tab for dashboard: 'SCAN' | 'LIST'
   const [mobileTab, setMobileTab] = useState('SCAN');
 
-  // Database Items state
+  // Database Items state (v2 with AssetNo)
   const [databaseItems, setDatabaseItems] = useState(() => {
     try {
-      const saved = localStorage.getItem('pmd_database_items');
+      const saved = localStorage.getItem('pmd_database_items_v2');
       if (saved) {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.length > 0 && parsed.some(p => p.asset)) {
+          return parsed;
+        }
       }
     } catch (e) {
       console.warn('Cannot load saved items:', e);
@@ -55,7 +58,7 @@ export default function App() {
   // Save database items to localStorage on change
   useEffect(() => {
     try {
-      localStorage.setItem('pmd_database_items', JSON.stringify(databaseItems));
+      localStorage.setItem('pmd_database_items_v2', JSON.stringify(databaseItems));
     } catch (e) {
       console.warn('Cannot save to localStorage:', e);
     }
