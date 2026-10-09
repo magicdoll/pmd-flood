@@ -120,6 +120,16 @@ export default function DetectionResultCard({
                 </div>
               </div>
 
+              {/* Asset Display */}
+              {item && item.asset && (
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">Asset:</span>
+                  <span className="font-display font-bold text-xs sm:text-sm text-sky-300 bg-sky-950/50 px-2 py-0.5 rounded border border-sky-500/30">
+                    {item.asset}
+                  </span>
+                </div>
+              )}
+
               {/* Action buttons */}
               <div className="flex flex-wrap items-center gap-2 pt-0.5">
                 <button
@@ -127,7 +137,7 @@ export default function DetectionResultCard({
                   className="px-3 py-1.5 rounded-lg bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-200 border border-indigo-500/40 text-xs font-medium transition flex items-center gap-1.5"
                 >
                   <Volume2 className="w-3.5 h-3.5 text-indigo-400" />
-                  <span>ฟังเสียงลำดับ</span>
+                  <span>ฟังเสียง</span>
                 </button>
 
                 {isFound && (

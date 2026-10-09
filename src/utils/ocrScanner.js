@@ -30,22 +30,22 @@ export async function initOcrWorker() {
 }
 
 /**
- * Scan QR Code from ImageData using jsQR & BarcodeDetector
+ * Scan QR Code from Canvas with 100% exact decoding
  */
 export async function scanQrFromCanvas(canvas) {
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
   const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-  // 1. Try Native BarcodeDetector (Chrome/Edge/Android hardware accelerated)
+  // 1. Try Native BarcodeDetector (hardware accelerated)
   if ('BarcodeDetector' in window) {
     try {
       const barcodeDetector = new window.BarcodeDetector({
-        formats: ['qr_code', 'code_128', 'code_39', 'data_matrix', 'ean_13', 'upc_a']
+        formats: ['qr_code', 'code_128', 'code_39', 'data_matrix', 'ean_13']
       });
       const detected = await barcodeDetector.detect(canvas);
-      if (detected && detected.length > 0) {
+      if (detected && detected.length > 0 && detected[0].rawValue) {
         return {
-          rawValue: detected[0].rawValue,
+          rawValue: String(detected[0].rawValue).trim(),
           format: detected[0].format || 'qr_code',
           location: detected[0].boundingBox,
           cornerPoints: detected[0].cornerPoints
@@ -56,14 +56,14 @@ export async function scanQrFromCanvas(canvas) {
     }
   }
 
-  // 2. Try jsQR (100% universal across all browsers/platforms)
+  // 2. Try jsQR (exact mathematical QR decoder)
   const qrCode = jsQR(imgData.data, imgData.width, imgData.height, {
     inversionAttempts: 'attemptBoth',
   });
 
-  if (qrCode) {
+  if (qrCode && qrCode.data) {
     return {
-      rawValue: qrCode.data,
+      rawValue: String(qrCode.data).trim(),
       format: 'qr_code',
       location: qrCode.location,
       cornerPoints: [
@@ -79,7 +79,7 @@ export async function scanQrFromCanvas(canvas) {
 }
 
 /**
- * Preprocess image on canvas for OCR
+ * Preprocess image for OCR (text recognition)
  */
 export function preprocessCanvas(srcCanvas, roi = null) {
   const width = roi ? roi.width : srcCanvas.width;
@@ -116,139 +116,78 @@ export function preprocessCanvas(srcCanvas, roi = null) {
 }
 
 /**
- * Calculate Levenshtein Distance for fuzzy matching
- */
-function levenshtein(a, b) {
-  const matrix = [];
-  for (let i = 0; i <= b.length; i++) matrix[i] = [i];
-  for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
-
-  for (let i = 1; i <= b.length; i++) {
-    for (let j = 1; j <= a.length; j++) {
-      if (b.charAt(i - 1) === a.charAt(j - 1)) {
-        matrix[i][j] = matrix[i - 1][j - 1];
-      } else {
-        matrix[i][j] = Math.min(
-          matrix[i - 1][j - 1] + 1,
-          matrix[i][j - 1] + 1,
-          matrix[i - 1][j] + 1
-        );
-      }
-    }
-  }
-  return matrix[b.length][a.length];
-}
-
-/**
- * Extract PMD Tag from QR/Text string and match with Database
+ * Extract PMD Tag from QR/Text with 100% EXACT matching (NO fuzzy mutation)
  */
 export function extractAndMatchTag(rawText, databaseItems = []) {
   if (!rawText) return null;
 
-  const cleanUpper = String(rawText).trim().toUpperCase();
-  const tokens = cleanUpper.split(/[\s,;:|=/?&#\r\n\t]+/).map(t => t.replace(/[^A-Z0-9]/gi, '')).filter(Boolean);
+  // Clean raw string without altering alphanumeric content
+  const originalRaw = String(rawText).trim();
+  const cleanUpper = originalRaw.toUpperCase();
+  const normalizedRaw = cleanUpper.replace(/[^A-Z0-9]/gi, '');
 
-  // 1. Direct match with database items
-  for (const item of databaseItems) {
-    if (!item.normalizedTag) continue;
-    
-    // Check if whole string or URL contains exact tag
-    if (cleanUpper.includes(item.normalizedTag)) {
+  // Extract all sub-tokens (e.g. if QR is a URL: https://.../C2IT10231728?id=...)
+  const tokens = cleanUpper
+    .split(/[\s,;:|=/?&#\r\n\t_-]+/)
+    .map(t => t.replace(/[^A-Z0-9]/gi, ''))
+    .filter(Boolean);
+
+  // 1. Direct EXACT Match on entire string
+  const exactItem = databaseItems.find(item => item.normalizedTag && item.normalizedTag === normalizedRaw);
+  if (exactItem) {
+    return {
+      matchedTag: exactItem.tagNo,
+      scannedRaw: originalRaw,
+      item: exactItem,
+      confidence: 1.0,
+      method: 'EXACT_MATCH'
+    };
+  }
+
+  // 2. Direct EXACT Match on any token inside the QR string
+  for (const token of tokens) {
+    const tokenItem = databaseItems.find(item => item.normalizedTag && item.normalizedTag === token);
+    if (tokenItem) {
       return {
-        matchedTag: item.tagNo,
-        item: item,
+        matchedTag: tokenItem.tagNo,
+        scannedRaw: originalRaw,
+        item: tokenItem,
         confidence: 1.0,
-        method: 'QR_DATABASE_MATCH',
-        rawText
+        method: 'TOKEN_EXACT_MATCH'
       };
     }
+  }
 
-    // Check token match
-    for (const token of tokens) {
-      if (token === item.normalizedTag) {
+  // 3. Regex exact extraction for standard PMD formats like C2IT10231728
+  const tagRegexes = [
+    /([A-Z0-9]{2}IT[0-9]{8})/i,
+    /([A-Z0-9]{2}[0-9]{2}[0-9]{8})/i,
+    /([A-Z0-9]{10,14})/i
+  ];
+
+  for (const regex of tagRegexes) {
+    const match = cleanUpper.match(regex);
+    if (match && match[1]) {
+      const candidate = match[1].replace(/[^A-Z0-9]/gi, '');
+      const matchedDbItem = databaseItems.find(item => item.normalizedTag === candidate);
+      if (matchedDbItem) {
         return {
-          matchedTag: item.tagNo,
-          item: item,
+          matchedTag: matchedDbItem.tagNo,
+          scannedRaw: originalRaw,
+          item: matchedDbItem,
           confidence: 1.0,
-          method: 'QR_TOKEN_MATCH',
-          rawText
+          method: 'REGEX_EXACT_MATCH'
         };
       }
     }
   }
 
-  // 2. Pattern Regex match: e.g. C2IT10231728, L1IT..., [A-Z0-9]{2}IT[0-9]{8}
-  const tagRegexes = [
-    /([A-Z0-9]{2}IT[0-9]{8})/i,
-    /([A-Z0-9]{2}[0-9]{2}[0-9]{8})/i,
-    /([A-Z0-9]{11,13})/i
-  ];
-
-  let candidateTag = null;
-  for (const regex of tagRegexes) {
-    const match = cleanUpper.match(regex);
-    if (match && match[1]) {
-      candidateTag = match[1];
-      break;
-    }
-  }
-
-  // If no regex match, take first alphanumeric token with length >= 6
-  if (!candidateTag && tokens.length > 0) {
-    const longToken = tokens.find(t => t.length >= 6);
-    if (longToken) candidateTag = longToken;
-  }
-
-  if (candidateTag) {
-    const directFound = databaseItems.find(i => i.normalizedTag === candidateTag);
-    if (directFound) {
-      return {
-        matchedTag: directFound.tagNo,
-        item: directFound,
-        confidence: 0.98,
-        method: 'QR_REGEX_MATCH',
-        rawText
-      };
-    }
-
-    // Fuzzy matching against database for candidate with minor OCR/typo error
-    let bestMatch = null;
-    let minDistance = 999;
-    for (const item of databaseItems) {
-      if (!item.normalizedTag) continue;
-      const dist = levenshtein(candidateTag, item.normalizedTag);
-      if (dist < minDistance && dist <= 2) {
-        minDistance = dist;
-        bestMatch = item;
-      }
-    }
-
-    if (bestMatch && minDistance <= 2) {
-      return {
-        matchedTag: bestMatch.tagNo,
-        item: bestMatch,
-        confidence: minDistance === 1 ? 0.92 : 0.82,
-        method: `FUZZY_MATCH (dist=${minDistance})`,
-        detectedRaw: candidateTag,
-        rawText
-      };
-    }
-
-    return {
-      matchedTag: candidateTag,
-      item: null,
-      confidence: 0.7,
-      method: 'QR_CODE_NOT_IN_EXCEL',
-      rawText
-    };
-  }
-
-  // Fallback return raw text if any
+  // 4. If not found in Database, return EXACT scanned value as-is (NEVER fuzzy mutate!)
   return {
-    matchedTag: cleanUpper.slice(0, 20),
+    matchedTag: originalRaw,
+    scannedRaw: originalRaw,
     item: null,
-    confidence: 0.5,
-    method: 'RAW_QR_DATA',
-    rawText
+    confidence: 0.8,
+    method: 'NOT_IN_DATABASE'
   };
 }

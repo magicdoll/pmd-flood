@@ -46,6 +46,16 @@ export default function Header({
         {/* Action Controls */}
         <div className="flex items-center space-x-1 sm:space-x-2">
           
+          {/* Fullscreen AR Mode Button */}
+          <button
+            onClick={onOpenFullscreen}
+            className="px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold bg-gradient-to-r from-sky-500 via-indigo-600 to-cyan-500 hover:from-sky-400 hover:to-indigo-500 text-white shadow-md shadow-indigo-500/30 active:scale-95 transition flex items-center gap-1.5 cursor-pointer"
+            title="เปิดโหมดสแกนเต็มจอ AR"
+          >
+            <Camera className="w-3.5 h-3.5 animate-pulse" />
+            <span>เต็มจอ AR</span>
+          </button>
+
           {/* Voice Speech Toggle */}
           <button
             onClick={() => setVoiceEnabled(!voiceEnabled)}

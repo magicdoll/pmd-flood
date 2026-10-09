@@ -26,7 +26,8 @@ export default function DataTable({
         const query = searchTerm.toLowerCase().trim();
         const matchesTag = item.tagNo.toLowerCase().includes(query);
         const matchesOrder = String(item.order).toLowerCase().includes(query);
-        return matchesTag || matchesOrder;
+        const matchesAsset = (item.asset || '').toLowerCase().includes(query);
+        return matchesTag || matchesOrder || matchesAsset;
       })
       .sort((a, b) => {
         const numA = typeof a.order === 'number' ? a.order : 9999;
@@ -43,6 +44,7 @@ export default function DataTable({
     const exportData = items.map(item => ({
       'ลำดับ': item.order,
       'TagNo': item.tagNo,
+      'Asset': item.asset || '-',
       'สถานะการสแกน': item.scanned ? 'สแกนแล้ว (Completed)' : 'ยังไม่สแกน (Pending)',
       'เวลาที่ตรวจพบ': item.scannedAt || '-'
     }));
@@ -103,7 +105,7 @@ export default function DataTable({
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="ค้นหา Tag หรือ ลำดับ..."
+              placeholder="ค้นหา Tag, ลำดับ หรือ Asset..."
               className="w-full pl-8 pr-3 py-1.5 bg-slate-950/80 border border-slate-700/80 rounded-xl text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
             />
           </div>
@@ -154,7 +156,7 @@ export default function DataTable({
               <tr>
                 <th className="py-2.5 px-3 w-10 text-center">ตรวจ</th>
                 <th 
-                  className="py-2.5 px-3 cursor-pointer hover:text-slate-200 transition select-none w-20"
+                  className="py-2.5 px-3 cursor-pointer hover:text-slate-200 transition select-none w-16"
                   onClick={() => setSortOrder(sortOrder === 'ASC' ? 'DESC' : 'ASC')}
                 >
                   <div className="flex items-center gap-1">
@@ -163,6 +165,7 @@ export default function DataTable({
                   </div>
                 </th>
                 <th className="py-2.5 px-3">หมายเลข Tag PMD</th>
+                <th className="py-2.5 px-3">Asset</th>
                 <th className="py-2.5 px-3 text-right">เวลาสแกน</th>
               </tr>
             </thead>
@@ -212,6 +215,17 @@ export default function DataTable({
                       <span className={item.tagNo ? 'text-white font-semibold' : 'text-slate-500 italic'}>
                         {item.tagNo || '(ไม่มีแท็ก)'}
                       </span>
+                    </td>
+
+                    {/* Asset */}
+                    <td className="py-2 px-3 font-display font-medium text-xs text-sky-300">
+                      {item.asset ? (
+                        <span className="bg-sky-950/40 px-2 py-0.5 rounded border border-sky-500/20">
+                          {item.asset}
+                        </span>
+                      ) : (
+                        <span className="text-slate-500">-</span>
+                      )}
                     </td>
 
                     {/* Scanned Timestamp */}
